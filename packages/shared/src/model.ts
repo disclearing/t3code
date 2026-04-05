@@ -6,6 +6,7 @@ import {
   type CodexModelOptions,
   type ModelCapabilities,
   type ModelSelection,
+  type OpenCodeModelOptions,
   type ProviderKind,
 } from "@t3tools/contracts";
 
@@ -113,6 +114,19 @@ export function normalizeClaudeModelOptionsWithCapabilities(
     ...(effort ? { effort: effort as ClaudeModelOptions["effort"] } : {}),
     ...(fastMode !== undefined ? { fastMode } : {}),
     ...(contextWindow !== undefined ? { contextWindow } : {}),
+  };
+  return Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
+}
+
+export function normalizeOpenCodeModelOptionsWithCapabilities(
+  _caps: ModelCapabilities,
+  modelOptions: OpenCodeModelOptions | null | undefined,
+): OpenCodeModelOptions | undefined {
+  const variant = modelOptions?.variant;
+  const agent = modelOptions?.agent;
+  const nextOptions: OpenCodeModelOptions = {
+    ...(variant !== undefined ? { variant } : {}),
+    ...(agent !== undefined ? { agent } : {}),
   };
   return Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
 }

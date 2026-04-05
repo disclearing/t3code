@@ -4,6 +4,7 @@ import {
   type ModelSelection,
   ClaudeModelOptions,
   CodexModelOptions,
+  OpenCodeModelOptions,
   DEFAULT_MODEL_BY_PROVIDER,
   DEFAULT_SERVER_SETTINGS,
   ProjectId,
@@ -107,6 +108,38 @@ const TEST_PROVIDERS: ReadonlyArray<ServerProvider> = [
           reasoningEffortLevels: [],
           supportsFastMode: false,
           supportsThinkingToggle: true,
+          contextWindowOptions: [],
+          promptInjectedEffortLevels: [],
+        },
+      },
+    ],
+  },
+  {
+    provider: "opencode",
+    enabled: true,
+    installed: true,
+    version: "0.1.0",
+    status: "ready",
+    auth: { status: "authenticated" },
+    checkedAt: "2026-01-01T00:00:00.000Z",
+    models: [
+      {
+        slug: "openai/gpt-5",
+        name: "OpenAI · GPT-5",
+        isCustom: false,
+        capabilities: {
+          reasoningEffortLevels: [
+            { value: "minimal", label: "Minimal" },
+            { value: "low", label: "Low" },
+            { value: "medium", label: "Medium", isDefault: true },
+            { value: "high", label: "High" },
+          ],
+          agentOptions: [
+            { value: "build", label: "Build", isDefault: true },
+            { value: "plan", label: "Plan" },
+          ],
+          supportsFastMode: false,
+          supportsThinkingToggle: false,
           contextWindowOptions: [],
           promptInjectedEffortLevels: [],
         },
@@ -363,6 +396,118 @@ describe("TraitsPicker (Claude)", () => {
     }
     expect(button.className).toContain("border-input");
     expect(button.className).toContain("bg-popover");
+  });
+});
+
+// ── OpenCode TraitsPicker tests ───────────────────────────────────────
+
+async function mountOpenCodePicker(props?: {
+  model?: string;
+  options?: OpenCodeModelOptions;
+  prompt?: string;
+}) {
+  const threadId = ThreadId.makeUnsafe("thread-opencode-traits");
+  const model = props?.model ?? DEFAULT_MODEL_BY_PROVIDER.opencode;
+  const draftsByThreadId: Record<ThreadId, ComposerThreadDraftState> = {
+    [threadId]: {
+      prompt: props?.prompt ?? "",
+      images: [],
+      nonPersistedImageIds: [],
+      persistedAttachments: [],
+      terminalContexts: [],
+      modelSelectionByProvider: {
+        opencode: {
+          provider: "opencode",
+          model,
+          ...(props?.options ? { options: props.options } : {}),
+        },
+      },
+      activeProvider: "opencode",
+      runtimeMode: null,
+      interactionMode: null,
+    },
+  };
+
+  useComposerDraftStore.setState({
+    draftsByThreadId,
+    draftThreadsByThreadId: {},
+    projectDraftThreadIdByProjectId: {
+      [ProjectId.makeUnsafe("project-opencode-traits")]: threadId,
+    },
+  });
+
+  const host = document.createElement("div");
+  document.body.append(host);
+  const openCodeModels = TEST_PROVIDERS.find(
+    (provider) => provider.provider === "opencode",
+  )?.models;
+  if (!openCodeModels) {
+    throw new Error("Expected OpenCode models to be present in test providers.");
+  }
+  const screen = await render(
+    <TraitsPicker
+      provider="opencode"
+      models={openCodeModels}
+      threadId={threadId}
+      model={model}
+      prompt={props?.prompt ?? ""}
+      modelOptions={props?.options}
+      onPromptChange={() => {}}
+    />,
+    { container: host },
+  );
+
+  const cleanup = async () => {
+    await screen.unmount();
+    host.remove();
+  };
+
+  return {
+    [Symbol.asyncDispose]: cleanup,
+    cleanup,
+  };
+}
+
+describe("TraitsPicker (OpenCode)", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    localStorage.removeItem(COMPOSER_DRAFT_STORAGE_KEY);
+    useComposerDraftStore.setState({
+      draftsByThreadId: {},
+      draftThreadsByThreadId: {},
+      projectDraftThreadIdByProjectId: {},
+      stickyModelSelectionByProvider: {},
+    });
+  });
+
+  it("shows both effort and agent controls", async () => {
+    await using _ = await mountOpenCodePicker();
+
+    await page.getByRole("button").click();
+
+    await vi.waitFor(() => {
+      const text = document.body.textContent ?? "";
+      expect(text).toContain("Effort");
+      expect(text).toContain("Medium");
+      expect(text).toContain("Agent");
+      expect(text).toContain("Build");
+      expect(text).toContain("Plan");
+    });
+  });
+
+  it("persists sticky OpenCode options when selecting an agent", async () => {
+    await using _ = await mountOpenCodePicker({ options: { variant: "medium", agent: "build" } });
+
+    await page.getByRole("button").click();
+    await page.getByRole("menuitemradio", { name: "Plan" }).click();
+
+    expect(useComposerDraftStore.getState().stickyModelSelectionByProvider.opencode).toMatchObject({
+      provider: "opencode",
+      options: {
+        variant: "medium",
+        agent: "plan",
+      },
+    });
   });
 });
 

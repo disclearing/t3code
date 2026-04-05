@@ -106,6 +106,30 @@ const CLAUDE_MODELS_WITH_CONTEXT_WINDOW: ReadonlyArray<ServerProviderModel> = [
   },
 ];
 
+const OPENCODE_MODELS: ReadonlyArray<ServerProviderModel> = [
+  {
+    slug: "openai/gpt-5",
+    name: "OpenAI · GPT-5",
+    isCustom: false,
+    capabilities: {
+      reasoningEffortLevels: [
+        { value: "minimal", label: "Minimal" },
+        { value: "low", label: "Low" },
+        { value: "medium", label: "Medium", isDefault: true },
+        { value: "high", label: "High" },
+      ],
+      agentOptions: [
+        { value: "build", label: "Build", isDefault: true },
+        { value: "plan", label: "Plan" },
+      ],
+      supportsFastMode: false,
+      supportsThinkingToggle: false,
+      contextWindowOptions: [],
+      promptInjectedEffortLevels: [],
+    },
+  },
+];
+
 describe("getComposerProviderState", () => {
   it("returns codex defaults when no codex draft options exist", () => {
     const state = getComposerProviderState({
@@ -415,5 +439,45 @@ describe("getComposerProviderState", () => {
     });
 
     expect(state.modelOptionsForDispatch).not.toHaveProperty("fastMode");
+  });
+
+  it("keeps OpenCode variant and agent options for dispatch", () => {
+    const state = getComposerProviderState({
+      provider: "opencode",
+      model: "openai/gpt-5",
+      models: OPENCODE_MODELS,
+      prompt: "",
+      modelOptions: {
+        opencode: {
+          variant: "high",
+          agent: "plan",
+        },
+      },
+    });
+
+    expect(state).toEqual({
+      provider: "opencode",
+      promptEffort: "high",
+      modelOptionsForDispatch: {
+        variant: "high",
+        agent: "plan",
+      },
+    });
+  });
+
+  it("returns OpenCode defaults without forcing dispatch options", () => {
+    const state = getComposerProviderState({
+      provider: "opencode",
+      model: "openai/gpt-5",
+      models: OPENCODE_MODELS,
+      prompt: "",
+      modelOptions: undefined,
+    });
+
+    expect(state).toEqual({
+      provider: "opencode",
+      promptEffort: null,
+      modelOptionsForDispatch: undefined,
+    });
   });
 });

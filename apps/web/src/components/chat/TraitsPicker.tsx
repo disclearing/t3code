@@ -1,6 +1,7 @@
 import {
   type ClaudeModelOptions,
   type CodexModelOptions,
+  type OpenCodeModelOptions,
   type ProviderKind,
   type ProviderModelOptions,
   type ServerProviderModel,
@@ -52,6 +53,9 @@ function getRawEffort(
   if (provider === "codex") {
     return trimOrNull((modelOptions as CodexModelOptions | undefined)?.reasoningEffort);
   }
+  if (provider === "opencode") {
+    return trimOrNull((modelOptions as OpenCodeModelOptions | undefined)?.variant);
+  }
   return trimOrNull((modelOptions as ClaudeModelOptions | undefined)?.effort);
 }
 
@@ -72,6 +76,12 @@ function buildNextOptions(
 ): ProviderOptions {
   if (provider === "codex") {
     return { ...(modelOptions as CodexModelOptions | undefined), ...patch } as CodexModelOptions;
+  }
+  if (provider === "opencode") {
+    return {
+      ...(modelOptions as OpenCodeModelOptions | undefined),
+      ...patch,
+    } as OpenCodeModelOptions;
   }
   return { ...(modelOptions as ClaudeModelOptions | undefined), ...patch } as ClaudeModelOptions;
 }
@@ -124,6 +134,15 @@ function getSelectedTraits(
   const ultrathinkInBodyText =
     ultrathinkPromptControlled && isClaudeUltrathinkPrompt(prompt.replace(/^Ultrathink:\s*/i, ""));
 
+  const agentOptions = caps.agentOptions ?? [];
+  const rawAgent =
+    provider === "opencode"
+      ? trimOrNull((modelOptions as OpenCodeModelOptions | undefined)?.agent)
+      : null;
+  const defaultAgent = agentOptions.find((option) => option.isDefault)?.value ?? null;
+  const selectedAgent =
+    rawAgent && agentOptions.some((option) => option.value === rawAgent) ? rawAgent : defaultAgent;
+
   return {
     caps,
     effort,
@@ -135,6 +154,8 @@ function getSelectedTraits(
     defaultContextWindow,
     ultrathinkPromptControlled,
     ultrathinkInBodyText,
+    agentOptions,
+    selectedAgent,
   };
 }
 
@@ -182,6 +203,8 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     defaultContextWindow,
     ultrathinkPromptControlled,
     ultrathinkInBodyText,
+    agentOptions,
+    selectedAgent,
   } = getSelectedTraits(provider, models, model, prompt, modelOptions, allowPromptInjectedEffort);
   const defaultEffort = getDefaultEffort(caps);
 
@@ -203,7 +226,8 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
         const stripped = prompt.replace(/^Ultrathink:\s*/i, "");
         onPromptChange(stripped);
       }
-      const effortKey = provider === "codex" ? "reasoningEffort" : "effort";
+      const effortKey =
+        provider === "codex" ? "reasoningEffort" : provider === "opencode" ? "variant" : "effort";
       updateModelOptions(
         buildNextOptions(provider, modelOptions, { [effortKey]: nextOption.value }),
       );
@@ -221,7 +245,13 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     ],
   );
 
-  if (effort === null && thinkingEnabled === null && contextWindowOptions.length <= 1) {
+  if (
+    effort === null &&
+    thinkingEnabled === null &&
+    agentOptions.length === 0 &&
+    !caps.supportsFastMode &&
+    contextWindowOptions.length <= 1
+  ) {
     return null;
   }
 
@@ -268,6 +298,30 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
             <MenuRadioItem value="off">Off</MenuRadioItem>
           </MenuRadioGroup>
         </MenuGroup>
+      ) : null}
+      {agentOptions.length > 0 ? (
+        <>
+          {effort || thinkingEnabled !== null ? <MenuDivider /> : null}
+          <MenuGroup>
+            <div className="px-2 py-1.5 font-medium text-muted-foreground text-xs">Agent</div>
+            <MenuRadioGroup
+              value={selectedAgent ?? ""}
+              onValueChange={(value) => {
+                if (provider !== "opencode") return;
+                const nextOption = agentOptions.find((option) => option.value === value);
+                if (!nextOption) return;
+                updateModelOptions(buildNextOptions(provider, modelOptions, { agent: value }));
+              }}
+            >
+              {agentOptions.map((option) => (
+                <MenuRadioItem key={option.value} value={option.value}>
+                  {option.label}
+                  {option.isDefault ? " (default)" : ""}
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </MenuGroup>
+        </>
       ) : null}
       {caps.supportsFastMode ? (
         <>
@@ -342,6 +396,8 @@ export const TraitsPicker = memo(function TraitsPicker({
     contextWindow,
     defaultContextWindow,
     ultrathinkPromptControlled,
+    agentOptions,
+    selectedAgent,
   } = getSelectedTraits(provider, models, model, prompt, modelOptions, allowPromptInjectedEffort);
 
   const effortLabel = effort
@@ -351,6 +407,9 @@ export const TraitsPicker = memo(function TraitsPicker({
     contextWindowOptions.length > 1 && contextWindow !== defaultContextWindow
       ? (contextWindowOptions.find((o) => o.value === contextWindow)?.label ?? null)
       : null;
+  const agentLabel = selectedAgent
+    ? (agentOptions.find((o) => o.value === selectedAgent)?.label ?? selectedAgent)
+    : null;
   const triggerLabel = [
     ultrathinkPromptControlled
       ? "Ultrathink"
@@ -360,6 +419,7 @@ export const TraitsPicker = memo(function TraitsPicker({
           ? null
           : `Thinking ${thinkingEnabled ? "On" : "Off"}`,
     ...(caps.supportsFastMode && fastModeEnabled ? ["Fast"] : []),
+    ...(agentLabel ? [agentLabel] : []),
     ...(contextWindowLabel ? [contextWindowLabel] : []),
   ]
     .filter(Boolean)

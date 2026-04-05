@@ -33,6 +33,7 @@ import { checkClaudeProviderStatus, parseClaudeAuthStatusFromOutput } from "./Cl
 import { haveProvidersChanged, ProviderRegistryLive } from "./ProviderRegistry";
 import { ServerSettingsService, type ServerSettingsShape } from "../../serverSettings";
 import { ProviderRegistry } from "../Services/ProviderRegistry";
+import { ServerConfig } from "../../config";
 
 // ── Test helpers ────────────────────────────────────────────────────
 
@@ -522,6 +523,12 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
           const providerRegistryLayer = ProviderRegistryLive.pipe(
             Layer.provideMerge(Layer.succeed(ServerSettingsService, serverSettings)),
             Layer.provideMerge(
+              Layer.succeed(ServerConfig, {
+                attachmentsDir: "/tmp/attachments",
+                cwd: "/tmp",
+              } as any),
+            ),
+            Layer.provideMerge(
               mockCommandSpawnerLayer((command, args) => {
                 const joined = args.join(" ");
                 if (joined === "--version") {
@@ -537,12 +544,10 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
               }),
             ),
           );
-          const runtimeServices = yield* Layer.build(
-            Layer.mergeAll(
-              Layer.succeed(ServerSettingsService, serverSettings),
-              providerRegistryLayer,
-            ),
-          ).pipe(Scope.provide(scope));
+          const runtimeServices = yield* Layer.mergeAll(
+            Layer.succeed(ServerSettingsService, serverSettings),
+            providerRegistryLayer,
+          ).pipe(Layer.build, Scope.provide(scope));
 
           yield* Effect.gen(function* () {
             const registry = yield* ProviderRegistry;
