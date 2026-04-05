@@ -980,6 +980,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         return;
       }
 
+      for (const pending of context.pending.values()) {
+        clearTimeout(pending.timeout);
+        pending.reject(new Error("Session exited before request completed."));
+      }
+      context.pending.clear();
+      context.pendingApprovals.clear();
+      context.pendingUserInputs.clear();
+
       const message = `codex app-server exited (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
       this.updateSession(context, {
         status: "closed",

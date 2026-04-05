@@ -3962,6 +3962,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
       <ThreadErrorBanner
         error={activeThread.error}
         onDismiss={() => setThreadError(activeThread.id, null)}
+        onRetry={() => setThreadError(activeThread.id, null)}
       />
       {/* Main content area with optional plan sidebar */}
       <div className="flex min-h-0 min-w-0 flex-1">

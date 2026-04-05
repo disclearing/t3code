@@ -62,7 +62,7 @@ const ReadFromSequenceRequestSchema = Schema.Struct({
   limit: Schema.Number,
 });
 const DEFAULT_READ_FROM_SEQUENCE_LIMIT = 1_000;
-const READ_PAGE_SIZE = 500;
+const READ_PAGE_SIZE = 2000;
 
 function inferActorKind(
   event: Omit<OrchestrationEvent, "sequence">,

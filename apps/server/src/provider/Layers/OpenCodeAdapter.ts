@@ -310,7 +310,9 @@ async function stopOpenCodeContext(context: OpenCodeSessionContext): Promise<voi
     await context.client.session
       .abort({ sessionID: context.openCodeSessionId })
       .catch(() => undefined);
-  } catch {}
+  } catch (error) {
+    console.error("Failed to abort OpenCode session:", error);
+  }
   context.server.close();
 }
 

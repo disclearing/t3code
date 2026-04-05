@@ -613,20 +613,37 @@ function legacyToModelSelectionByProvider(
   modelOptions: ProviderModelOptions | null | undefined,
 ): Partial<Record<ProviderKind, ModelSelection>> {
   const result: Partial<Record<ProviderKind, ModelSelection>> = {};
+  const modelForProvider = (provider: ProviderKind) =>
+    modelSelection?.provider === provider
+      ? modelSelection.model
+      : DEFAULT_MODEL_BY_PROVIDER[provider];
   // Add entries from the options bag (for non-active providers)
   if (modelOptions) {
-    for (const provider of ["codex", "claudeAgent", "opencode"] as const) {
-      const options = modelOptions[provider];
-      if (options && Object.keys(options).length > 0) {
-        result[provider] = {
-          provider,
-          model:
-            modelSelection?.provider === provider
-              ? modelSelection.model
-              : DEFAULT_MODEL_BY_PROVIDER[provider],
-          options,
-        };
-      }
+    const codexOptions = modelOptions.codex;
+    if (codexOptions && Object.keys(codexOptions).length > 0) {
+      result.codex = {
+        provider: "codex",
+        model: modelForProvider("codex"),
+        options: codexOptions,
+      };
+    }
+
+    const claudeOptions = modelOptions.claudeAgent;
+    if (claudeOptions && Object.keys(claudeOptions).length > 0) {
+      result.claudeAgent = {
+        provider: "claudeAgent",
+        model: modelForProvider("claudeAgent"),
+        options: claudeOptions,
+      };
+    }
+
+    const openCodeOptions = modelOptions.opencode;
+    if (openCodeOptions && Object.keys(openCodeOptions).length > 0) {
+      result.opencode = {
+        provider: "opencode",
+        model: modelForProvider("opencode"),
+        options: openCodeOptions,
+      };
     }
   }
   // Add/overwrite the active selection (it's authoritative for its provider)

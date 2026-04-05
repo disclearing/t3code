@@ -1,13 +1,15 @@
 import { memo } from "react";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
-import { CircleAlertIcon, XIcon } from "lucide-react";
+import { CircleAlertIcon, RotateCcwIcon, XIcon } from "lucide-react";
 
 export const ThreadErrorBanner = memo(function ThreadErrorBanner({
   error,
   onDismiss,
+  onRetry,
 }: {
   error: string | null;
   onDismiss?: () => void;
+  onRetry?: () => void;
 }) {
   if (!error) return null;
   return (
@@ -17,16 +19,28 @@ export const ThreadErrorBanner = memo(function ThreadErrorBanner({
         <AlertDescription className="line-clamp-3" title={error}>
           {error}
         </AlertDescription>
-        {onDismiss && (
+        {(onDismiss || onRetry) && (
           <AlertAction>
-            <button
-              type="button"
-              aria-label="Dismiss error"
-              className="inline-flex size-6 items-center justify-center rounded-md text-destructive/60 transition-colors hover:text-destructive"
-              onClick={onDismiss}
-            >
-              <XIcon className="size-3.5" />
-            </button>
+            {onRetry && (
+              <button
+                type="button"
+                aria-label="Retry"
+                className="inline-flex size-6 items-center justify-center rounded-md text-destructive/60 transition-colors hover:text-destructive"
+                onClick={onRetry}
+              >
+                <RotateCcwIcon className="size-3.5" />
+              </button>
+            )}
+            {onDismiss && (
+              <button
+                type="button"
+                aria-label="Dismiss error"
+                className="inline-flex size-6 items-center justify-center rounded-md text-destructive/60 transition-colors hover:text-destructive"
+                onClick={onDismiss}
+              >
+                <XIcon className="size-3.5" />
+              </button>
+            )}
           </AlertAction>
         )}
       </Alert>

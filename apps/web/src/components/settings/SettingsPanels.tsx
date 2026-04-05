@@ -117,11 +117,7 @@ const PROVIDER_UI_META: Record<ProviderKind, ProviderUIMeta> = {
   },
 };
 
-const PROVIDER_DISPLAY_ORDER: readonly ProviderKind[] = [
-  "codex",
-  "claudeAgent",
-  "opencode",
-];
+const PROVIDER_DISPLAY_ORDER: readonly ProviderKind[] = ["codex", "claudeAgent", "opencode"];
 
 const PROVIDER_STATUS_STYLES = {
   disabled: {

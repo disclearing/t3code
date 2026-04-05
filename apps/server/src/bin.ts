@@ -8,6 +8,16 @@ import { NetService } from "@t3tools/shared/Net";
 import { cli } from "./cli";
 import { version } from "../package.json" with { type: "json" };
 
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+  process.exit(1);
+});
+
 const CliRuntimeLayer = Layer.mergeAll(NodeServices.layer, NetService.layer);
 
 Command.run(cli, { version }).pipe(
