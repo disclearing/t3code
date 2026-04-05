@@ -87,8 +87,7 @@ const TIMESTAMP_FORMAT_LABELS = {
   "24-hour": "24-hour",
 } as const;
 
-type InstallProviderSettings = {
-  provider: ProviderKind;
+type ProviderUIMeta = {
   title: string;
   binaryPlaceholder: string;
   binaryDescription: ReactNode;
@@ -97,9 +96,8 @@ type InstallProviderSettings = {
   homeDescription?: ReactNode;
 };
 
-const PROVIDER_SETTINGS: readonly InstallProviderSettings[] = [
-  {
-    provider: "codex",
+const PROVIDER_UI_META: Record<ProviderKind, ProviderUIMeta> = {
+  codex: {
     title: "Codex",
     binaryPlaceholder: "Codex binary path",
     binaryDescription: "Path to the Codex binary",
@@ -107,13 +105,23 @@ const PROVIDER_SETTINGS: readonly InstallProviderSettings[] = [
     homePlaceholder: "CODEX_HOME",
     homeDescription: "Optional custom Codex home and config directory.",
   },
-  {
-    provider: "claudeAgent",
+  claudeAgent: {
     title: "Claude",
     binaryPlaceholder: "Claude binary path",
     binaryDescription: "Path to the Claude binary",
   },
-] as const;
+  opencode: {
+    title: "OpenCode",
+    binaryPlaceholder: "OpenCode binary path",
+    binaryDescription: "Path to the OpenCode binary",
+  },
+};
+
+const PROVIDER_DISPLAY_ORDER: readonly ProviderKind[] = [
+  "codex",
+  "claudeAgent",
+  "opencode",
+];
 
 const PROVIDER_STATUS_STYLES = {
   disabled: {
@@ -452,11 +460,13 @@ export function useSettingsRestore(onRestored?: () => void) {
     settings.textGenerationModelSelection ?? null,
     DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection ?? null,
   );
-  const areProviderSettingsDirty = PROVIDER_SETTINGS.some((providerSettings) => {
-    const currentSettings = settings.providers[providerSettings.provider];
-    const defaultSettings = DEFAULT_UNIFIED_SETTINGS.providers[providerSettings.provider];
-    return !Equal.equals(currentSettings, defaultSettings);
-  });
+  const areProviderSettingsDirty = (Object.keys(settings.providers) as ProviderKind[]).some(
+    (provider) => {
+      const currentSettings = settings.providers[provider];
+      const defaultSettings = DEFAULT_UNIFIED_SETTINGS.providers[provider];
+      return !Equal.equals(currentSettings, defaultSettings);
+    },
+  );
 
   const changedSettingLabels = useMemo(
     () => [
@@ -740,41 +750,50 @@ export function GeneralSettingsPanel() {
     [settings, updateSettings],
   );
 
-  const providerCards = PROVIDER_SETTINGS.map((providerSettings) => {
-    const liveProvider = serverProviders.find(
-      (candidate) => candidate.provider === providerSettings.provider,
-    );
-    const providerConfig = settings.providers[providerSettings.provider];
-    const defaultProviderConfig = DEFAULT_UNIFIED_SETTINGS.providers[providerSettings.provider];
-    const statusKey = liveProvider?.status ?? (providerConfig.enabled ? "warning" : "disabled");
-    const summary = getProviderSummary(liveProvider);
-    const models: ReadonlyArray<ServerProviderModel> =
-      liveProvider?.models ??
-      providerConfig.customModels.map((slug) => ({
-        slug,
-        name: slug,
-        isCustom: true,
-        capabilities: null,
-      }));
+  const providerCards = useMemo(() => {
+    const liveKeys = new Set(serverProviders.map((p) => p.provider));
+    const configKeys = Object.keys(settings.providers) as ProviderKind[];
+    const allProviders = new Set<ProviderKind>([...liveKeys, ...configKeys]);
 
-    return {
-      provider: providerSettings.provider,
-      title: providerSettings.title,
-      binaryPlaceholder: providerSettings.binaryPlaceholder,
-      binaryDescription: providerSettings.binaryDescription,
-      homePathKey: providerSettings.homePathKey,
-      homePlaceholder: providerSettings.homePlaceholder,
-      homeDescription: providerSettings.homeDescription,
-      binaryPathValue: providerConfig.binaryPath,
-      isDirty: !Equal.equals(providerConfig, defaultProviderConfig),
-      liveProvider,
-      models,
-      providerConfig,
-      statusStyle: PROVIDER_STATUS_STYLES[statusKey],
-      summary,
-      versionLabel: getProviderVersionLabel(liveProvider?.version),
-    };
-  });
+    const ordered = PROVIDER_DISPLAY_ORDER.filter((k) => allProviders.has(k));
+    const remaining = [...allProviders].filter((k) => !ordered.includes(k));
+    const providers = [...ordered, ...remaining];
+
+    return providers.map((provider) => {
+      const liveProvider = serverProviders.find((c) => c.provider === provider);
+      const providerConfig = settings.providers[provider];
+      const defaultProviderConfig = DEFAULT_UNIFIED_SETTINGS.providers[provider];
+      const meta = PROVIDER_UI_META[provider];
+      const statusKey = liveProvider?.status ?? (providerConfig.enabled ? "warning" : "disabled");
+      const summary = getProviderSummary(liveProvider);
+      const models: ReadonlyArray<ServerProviderModel> =
+        liveProvider?.models ??
+        providerConfig.customModels.map((slug) => ({
+          slug,
+          name: slug,
+          isCustom: true,
+          capabilities: null,
+        }));
+
+      return {
+        provider,
+        title: meta?.title ?? PROVIDER_DISPLAY_NAMES[provider] ?? provider,
+        binaryPlaceholder: meta?.binaryPlaceholder ?? `${provider} binary path`,
+        binaryDescription: meta?.binaryDescription ?? `Path to the ${provider} binary`,
+        homePathKey: meta?.homePathKey,
+        homePlaceholder: meta?.homePlaceholder,
+        homeDescription: meta?.homeDescription,
+        binaryPathValue: providerConfig.binaryPath,
+        isDirty: !Equal.equals(providerConfig, defaultProviderConfig),
+        liveProvider,
+        models,
+        providerConfig,
+        statusStyle: PROVIDER_STATUS_STYLES[statusKey],
+        summary,
+        versionLabel: getProviderVersionLabel(liveProvider?.version),
+      };
+    });
+  }, [serverProviders, settings.providers]);
 
   const lastCheckedAt =
     serverProviders.length > 0
