@@ -424,6 +424,10 @@ function normalizeProviderModelOptions(
     candidate?.claudeAgent && typeof candidate.claudeAgent === "object"
       ? (candidate.claudeAgent as Record<string, unknown>)
       : null;
+  const opencodeCandidate =
+    candidate?.opencode && typeof candidate.opencode === "object"
+      ? (candidate.opencode as Record<string, unknown>)
+      : null;
 
   const codexReasoningEffort: CodexReasoningEffort | undefined =
     codexCandidate?.reasoningEffort === "low" ||
@@ -492,12 +496,29 @@ function normalizeProviderModelOptions(
         }
       : undefined;
 
-  if (!codex && !claude) {
+  const opencodeVariant =
+    typeof opencodeCandidate?.variant === "string" && opencodeCandidate.variant.length > 0
+      ? opencodeCandidate.variant
+      : undefined;
+  const opencodeAgent =
+    typeof opencodeCandidate?.agent === "string" && opencodeCandidate.agent.length > 0
+      ? opencodeCandidate.agent
+      : undefined;
+  const opencode =
+    opencodeVariant !== undefined || opencodeAgent !== undefined
+      ? {
+          ...(opencodeVariant !== undefined ? { variant: opencodeVariant } : {}),
+          ...(opencodeAgent !== undefined ? { agent: opencodeAgent } : {}),
+        }
+      : undefined;
+
+  if (!codex && !claude && !opencode) {
     return null;
   }
   return {
     ...(codex ? { codex } : {}),
     ...(claude ? { claudeAgent: claude } : {}),
+    ...(opencode ? { opencode } : {}),
   };
 }
 
@@ -594,7 +615,7 @@ function legacyToModelSelectionByProvider(
   const result: Partial<Record<ProviderKind, ModelSelection>> = {};
   // Add entries from the options bag (for non-active providers)
   if (modelOptions) {
-    for (const provider of ["codex", "claudeAgent"] as const) {
+    for (const provider of ["codex", "claudeAgent", "opencode"] as const) {
       const options = modelOptions[provider];
       if (options && Object.keys(options).length > 0) {
         result[provider] = {

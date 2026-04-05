@@ -77,8 +77,8 @@ function parseServerUrlFromOutput(output: string): string | null {
   return null;
 }
 
-function isPrimaryAgent(agent: Agent): boolean {
-  return !agent.hidden && (agent.mode === "primary" || agent.mode === "all");
+function isVisibleAgent(agent: Agent): boolean {
+  return !agent.hidden;
 }
 
 function inferVariantValues(providerID: string): ReadonlyArray<string> {
@@ -132,12 +132,12 @@ function buildVariantOptions(
 }
 
 function buildAgentOptions(agents: ReadonlyArray<Agent>) {
-  const primaryAgents = agents.filter(isPrimaryAgent);
+  const availableAgents = agents.filter(isVisibleAgent);
   const defaultAgent =
-    primaryAgents.find((agent) => agent.name === "build")?.name ??
-    primaryAgents[0]?.name ??
+    availableAgents.find((agent) => agent.name === "build")?.name ??
+    availableAgents[0]?.name ??
     undefined;
-  return primaryAgents.map((agent) => {
+  return availableAgents.map((agent) => {
     const option: { value: string; label: string; isDefault?: boolean } = {
       value: agent.name,
       label: titleCaseSlug(agent.name),

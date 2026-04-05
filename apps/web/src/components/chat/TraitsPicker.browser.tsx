@@ -144,6 +144,23 @@ const TEST_PROVIDERS: ReadonlyArray<ServerProvider> = [
           promptInjectedEffortLevels: [],
         },
       },
+      {
+        slug: "openai/gpt-5-no-default",
+        name: "OpenAI · GPT-5 No Default",
+        isCustom: false,
+        capabilities: {
+          reasoningEffortLevels: [
+            { value: "minimal", label: "Minimal" },
+            { value: "low", label: "Low" },
+            { value: "medium", label: "Medium" },
+          ],
+          agentOptions: [{ value: "build", label: "Build", isDefault: true }],
+          supportsFastMode: false,
+          supportsThinkingToggle: false,
+          contextWindowOptions: [],
+          promptInjectedEffortLevels: [],
+        },
+      },
     ],
   },
 ];
@@ -507,6 +524,20 @@ describe("TraitsPicker (OpenCode)", () => {
         variant: "medium",
         agent: "plan",
       },
+    });
+  });
+
+  it("shows effort controls even when no default effort is defined", async () => {
+    await using _ = await mountOpenCodePicker({ model: "openai/gpt-5-no-default" });
+
+    await page.getByRole("button").click();
+
+    await vi.waitFor(() => {
+      const text = document.body.textContent ?? "";
+      expect(text).toContain("Effort");
+      expect(text).toContain("Minimal");
+      expect(text).toContain("Low");
+      expect(text).toContain("Medium");
     });
   });
 });

@@ -207,6 +207,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     selectedAgent,
   } = getSelectedTraits(provider, models, model, prompt, modelOptions, allowPromptInjectedEffort);
   const defaultEffort = getDefaultEffort(caps);
+  const hasEffortControls = effortLevels.length > 0;
 
   const handleEffortChange = useCallback(
     (value: string) => {
@@ -246,7 +247,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
   );
 
   if (
-    effort === null &&
+    !hasEffortControls &&
     thinkingEnabled === null &&
     agentOptions.length === 0 &&
     !caps.supportsFastMode &&
@@ -257,7 +258,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
 
   return (
     <>
-      {effort ? (
+      {hasEffortControls ? (
         <>
           <MenuGroup>
             <div className="px-2 pt-1.5 pb-1 font-medium text-muted-foreground text-xs">Effort</div>
@@ -267,7 +268,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
               </div>
             ) : null}
             <MenuRadioGroup
-              value={ultrathinkPromptControlled ? "ultrathink" : effort}
+              value={ultrathinkPromptControlled ? "ultrathink" : (effort ?? "")}
               onValueChange={handleEffortChange}
             >
               {effortLevels.map((option) => (
@@ -301,7 +302,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
       ) : null}
       {agentOptions.length > 0 ? (
         <>
-          {effort || thinkingEnabled !== null ? <MenuDivider /> : null}
+          {hasEffortControls || thinkingEnabled !== null ? <MenuDivider /> : null}
           <MenuGroup>
             <div className="px-2 py-1.5 font-medium text-muted-foreground text-xs">Agent</div>
             <MenuRadioGroup

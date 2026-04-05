@@ -1011,6 +1011,35 @@ describe("composerDraftStore provider-scoped option updates", () => {
     expect(draft?.modelSelectionByProvider.claudeAgent?.options).toEqual({ effort: "max" });
     expect(draft?.activeProvider).toBe("codex");
   });
+
+  it("persists OpenCode variant and agent options", () => {
+    const store = useComposerDraftStore.getState();
+    store.setModelSelection(threadId, modelSelection("opencode", "openai/gpt-5"));
+
+    store.setProviderModelOptions(
+      threadId,
+      "opencode",
+      {
+        variant: "high",
+        agent: "plan",
+      },
+      { persistSticky: true },
+    );
+
+    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
+    expect(draft?.modelSelectionByProvider.opencode).toEqual(
+      modelSelection("opencode", "openai/gpt-5", {
+        variant: "high",
+        agent: "plan",
+      }),
+    );
+    expect(useComposerDraftStore.getState().stickyModelSelectionByProvider.opencode).toEqual(
+      modelSelection("opencode", "openai/gpt-5", {
+        variant: "high",
+        agent: "plan",
+      }),
+    );
+  });
 });
 
 describe("composerDraftStore runtime and interaction settings", () => {
